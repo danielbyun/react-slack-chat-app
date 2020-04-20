@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect, Fragment } from "react";
 import {
   Grid,
   Form,
@@ -7,63 +7,181 @@ import {
   Header,
   Message,
   Icon,
-  Input,
 } from "semantic-ui-react";
 import { Link } from "react-router-dom";
 import "../../App.css";
-
-const handleChange = (e) => {
-  const { name, value } = e.target;
-};
+import firebase from "../../firebase";
 
 const Register = () => {
+  const [state, setState] = useState({
+    username: "",
+    email: "",
+    password: "",
+    passwordConfirmation: "",
+    errors: [],
+    loading: false,
+  });
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    setState({
+      ...state,
+      [name]: value,
+    });
+  };
+
+  const isFormEmpty = ({ username, email, password, passwordConfirmation }) => {
+    return (
+      !username.length ||
+      !email.length ||
+      !password.length ||
+      !passwordConfirmation.length
+    );
+  };
+
+  const isPasswordValid = ({ password, passwordConfirmation }) => {
+    if (password.length < 6 || passwordConfirmation.length < 6) {
+      return false;
+    } else if (password !== passwordConfirmation) {
+      return false;
+    } else {
+      return true;
+    }
+  };
+
+  const isFormValid = () => {
+    let errorsArray = [];
+    let error;
+
+    if (isFormEmpty(state)) {
+      // throw error
+      error = { message: "Fill in all fields" };
+      setState({ errors: errorsArray.concat(error) });
+
+      return false;
+    } else if (!isPasswordValid(state)) {
+      // throw error
+      error = { message: "Password is invalid" };
+      setState({ errors: errorsArray.concat(error) });
+
+      return false;
+    } else {
+      // forms valid
+
+      return true;
+    }
+  };
+
+  const handleInputError = (errors, inputName) => {
+    return errors.some((error) =>
+      error.message.toLowerCase().includes(inputName)
+    )
+      ? "error"
+      : "";
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    if (isFormValid()) {
+      //   setState({});
+      setState({ loading: true });
+
+      firebase
+        .auth()
+        .createUserWithEmailAndPassword(state.email, state.password)
+        .then((createdUser) => {
+          console.log(createdUser);
+          setState({ loading: false });
+        })
+        .catch((error) => {
+          let errorsArray = [];
+          let errorObject;
+          errorObject = { message: error.message };
+
+          setState({ errors: errorsArray.concat(errorObject) });
+          setState({ loading: false });
+        });
+    }
+  };
+
+  const {
+    username,
+    email,
+    password,
+    passwordConfirmation,
+    errors,
+    loading,
+  } = state;
+
   return (
     <Grid textAlign="center" verticalAlign="middle" className="app">
       <Grid.Column style={{ maxWidth: 450 }}>
         <Header as="h2" icon colors="orange" textAlign="center">
           <Icon name="puzzle piece" color="orange" />
           Register for Slack Chat App
-          <Form size="large">
+          <Form size="large" onSubmit={handleSubmit}>
             <Segment stacked>
-              <Input
-                fluid
-                name="username"
-                icon="user"
-                iconPosition="left"
-                placeholder="username"
-                onChange={handleChange}
+              <Form.Input
+                label="Username"
+                placeholder="Username"
                 type="text"
+                name="username"
+                value={username || ""}
+                onChange={(e) => handleChange(e)}
+                className={handleInputError(errors, "username")}
               />
-              <Input
-                fluid
-                name="email"
-                icon="mail"
-                iconPosition="left"
-                placeholder="email"
-                onChange={handleChange}
+
+              <Form.Input
+                label="Email"
+                placeholder="Email"
                 type="email"
+                name="email"
+                value={email || ""}
+                onChange={(e) => handleChange(e)}
+                className={handleInputError(errors, "email")}
               />
-              <Input
-                fluid
+
+              <Form.Input
+                label="Password"
+                placeholder="Password"
+                type="password"
                 name="password"
-                icon="lock"
-                iconPosition="left"
-                placeholder="password"
-                onChange={handleChange}
-                type="password"
+                value={password || ""}
+                onChange={(e) => handleChange(e)}
               />
-              <Input
-                fluid
-                name="passwordConfirmation"
-                icon="repeat"
-                iconPosition="left"
+              <Form.Input
+                label="Password Confirmation"
                 placeholder="Password Confirmation"
-                onChange={handleChange}
                 type="password"
+                name="passwordConfirmation"
+                value={passwordConfirmation || ""}
+                onChange={(e) => handleChange(e)}
               />
-              <Button color="orange" fluid size="large">
+              <Button
+                color="orange"
+                fluid
+                size="large"
+                disabled={loading}
+                type="submit"
+                className={loading ? "loading" : ""}
+              >
                 Submit
               </Button>
+              {state.errors !== undefined && (
+                <Fragment>
+                  {state.errors.length > 0 && (
+                    <Message negative>
+                      <h5>Error</h5>
+                      {state.errors.map((error, index) => (
+                        <p key={index}>{error.message}</p>
+                      ))}
+                    </Message>
+                  )}
+                </Fragment>
+              )}
+
               <Message>
                 Already a user? <Link to="/login">Login</Link>
               </Message>
