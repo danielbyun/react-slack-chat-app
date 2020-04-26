@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Fragment } from "react";
+import React, { useState, Fragment } from "react";
 import {
   Grid,
   Form,
@@ -11,6 +11,7 @@ import {
 import { Link } from "react-router-dom";
 import "../../App.css";
 import firebase from "../../firebase";
+import md5 from "md5";
 
 const Register = () => {
   const [state, setState] = useState({
@@ -20,6 +21,7 @@ const Register = () => {
     passwordConfirmation: "",
     errors: [],
     loading: false,
+    usersRef: firebase.database().ref("users"),
   });
 
   const handleChange = (e) => {
@@ -81,6 +83,13 @@ const Register = () => {
       : "";
   };
 
+  const saveUser = (createdUser) => {
+    return state.usersRef.child(createdUser.user.uid).set({
+      name: createdUser.user.displayName,
+      avatar: createdUser.user.photoURL,
+    });
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
 
@@ -93,7 +102,23 @@ const Register = () => {
         .createUserWithEmailAndPassword(state.email, state.password)
         .then((createdUser) => {
           console.log(createdUser);
-          setState({ loading: false });
+          createdUser.user
+            .updateProfile({
+              displayName: state.username,
+              photoURL: `http://gravatar.com/avatar/${md5(
+                createdUser.user.email
+              )}?d=identicon`,
+            })
+            .then(() => {
+              saveUser(createdUser).then(() => {
+                console.log("user saved");
+                setState({ loading: false });
+              });
+            })
+            .catch((error) => {
+              console.error(error);
+              setState({ errors: errors.concat(error), loading: false });
+            });
         })
         .catch((error) => {
           let errorsArray = [];
@@ -130,7 +155,7 @@ const Register = () => {
                 name="username"
                 value={username || ""}
                 onChange={(e) => handleChange(e)}
-                className={handleInputError(errors, "username")}
+                // className={handleInputError(errors, "username")}
               />
 
               <Form.Input
@@ -140,7 +165,7 @@ const Register = () => {
                 name="email"
                 value={email || ""}
                 onChange={(e) => handleChange(e)}
-                className={handleInputError(errors, "email")}
+                // className={handleInputError(errors, "email")}
               />
 
               <Form.Input
