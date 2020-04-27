@@ -1,20 +1,42 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Header, Segment, Icon, Input } from "semantic-ui-react";
 
-const MessagesHeader = () => {
+const MessagesHeader = ({
+  channelName,
+  uniqueUsers,
+  handleSearchChange,
+  searchLoading,
+  isPrivateChannel,
+  handleStar,
+  isChannelStarred,
+}) => {
+  useEffect(() => {
+    // console.log(channelName);
+    // console.log(uniqueUsers);
+    // console.log(isChannelStarred);
+  }, [channelName, uniqueUsers, isChannelStarred]);
   return (
     <Segment clearing>
       {/* channel title */}
       <Header fluid={"true"} as="h2" floated="left" style={{ marginBottom: 0 }}>
         <span>
-          Channel
-          <Icon name={"star outline"} color="black" />
+          {channelName}
+          {!isPrivateChannel && (
+            <Icon
+              onClick={handleStar}
+              style={{ cursor: "pointer" }}
+              name={isChannelStarred ? "star" : "star outline"}
+              color={isChannelStarred ? "yellow" : "black"}
+            />
+          )}
         </span>
-        <Header.Subheader>2 Users</Header.Subheader>
+        <Header.Subheader>{uniqueUsers !== 0 && uniqueUsers}</Header.Subheader>
       </Header>
       {/* channel Search Input */}
       <Header floated="right">
         <Input
+          loading={searchLoading}
+          onChange={handleSearchChange}
           size="mini"
           icon="search"
           name="searchTerm"

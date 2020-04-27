@@ -42,7 +42,6 @@ const Login = (props) => {
         .auth()
         .signInWithEmailAndPassword(state.email, state.password)
         .then((signedInUser) => {
-          console.log(signedInUser);
           history.push("/");
         })
         .catch((error) => {

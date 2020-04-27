@@ -1,14 +1,9 @@
-import React, { useEffect } from "react";
+import React from "react";
 import moment from "moment";
-import { Comment } from "semantic-ui-react";
+import { Comment, Image } from "semantic-ui-react";
 
 const Message = (props) => {
-  const { currentUser, message } = props;
-
-  useEffect(() => {
-    console.log(currentUser);
-    console.log(message);
-  }, [currentUser, message]);
+  const { user, message } = props;
 
   const isOwnMessage = (message, user) => {
     if (message !== undefined && user !== undefined)
@@ -16,16 +11,27 @@ const Message = (props) => {
   };
 
   const timeFromNow = (timestamp) => {
-    return moment(timestamp).fromNow();
+    return <p>{moment(timestamp).fromNow()}</p>;
+  };
+
+  const isMessage = (message) => {
+    return (
+      message.hasOwnProperty("image") && !message.hasOwnProperty("content")
+    );
   };
 
   return (
     <Comment>
       <Comment.Avatar src={message.user.avatar} />
-      <Comment.Content className={isOwnMessage(message, currentUser)}>
+      <Comment.Content className={isOwnMessage(message, user)}>
         <Comment.Author as="a">{message.user.name}</Comment.Author>
-        <Comment.MetaData>{timeFromNow(message.timestamp)}</Comment.MetaData>
-        <Comment.Text>{message.content}</Comment.Text>
+        <Comment.Metadata>{timeFromNow(message.timestamp)}</Comment.Metadata>
+
+        {isMessage(message) ? (
+          <Image src={message.image} className="message__image" />
+        ) : (
+          <Comment.Text>{message.message}</Comment.Text>
+        )}
       </Comment.Content>
     </Comment>
   );

@@ -1,20 +1,34 @@
 import React, { useEffect, useState, Fragment } from "react";
 import firebase from "../../../firebase";
-import { Menu, Icon, Modal, Form, Input, Button } from "semantic-ui-react";
+import {
+  Menu,
+  Icon,
+  Modal,
+  Form,
+  Input,
+  Button,
+  Label,
+} from "semantic-ui-react";
 import { connect } from "react-redux";
-import { setCurrentChannel } from "../../../redux/actions";
+import { setCurrentChannel, setPrivateChannel } from "../../../redux/actions";
 
 import _ from "lodash";
 
 const Channels = (props) => {
-  const { currentUser, setCurrentChannel } = props;
-  const [channels, setChannels] = useState([]);
+  const { currentUser, setCurrentChannel, setPrivateChannel } = props;
   const [open, setOpen] = useState();
+  const [channel, setChannel] = useState(null);
+  const [channels, setChannels] = useState([]);
   const [channelName, setChannelName] = useState();
   const [channelDetails, setChannelDetails] = useState();
-  const [firstLoad, setFirstLoad] = useState(true);
   const [currentActiveChannel, setCurrentActiveChannel] = useState();
-  const channelsRef = firebase.database().ref("channels");
+
+  const [currentNotifications, setNotifications] = useState([]);
+
+  const [firstLoad, setFirstLoad] = useState(true);
+
+  const [channelsRef] = useState(firebase.database().ref("channels"));
+  const [messagesRef] = useState(firebase.database().ref("messages"));
 
   const openModal = () => {
     setOpen(true);
@@ -83,6 +97,18 @@ const Channels = (props) => {
     setCurrentActiveChannel(channel.id);
   };
 
+  const getNotificationCount = (channel) => {
+    let count = 0;
+
+    currentNotifications.forEach((notification) => {
+      if (notification.id === channel.id) {
+        count = notification.count;
+      }
+    });
+
+    if (count > 0) return count;
+  };
+
   const displayChannels = (channels) =>
     channels.length > 0 &&
     channels.map((channel) => (
@@ -93,6 +119,9 @@ const Channels = (props) => {
         style={{ opacity: 0.7 }}
         active={channel.id === currentActiveChannel}
       >
+        {getNotificationCount(channel) && (
+          <Label color="red">{getNotificationCount(channel)}</Label>
+        )}
         # {channel.name.channelName}
       </Menu.Item>
     ));
@@ -100,6 +129,23 @@ const Channels = (props) => {
   const changeChannel = (channel) => {
     setActiveChannel(channel);
     setCurrentChannel(channel);
+    setPrivateChannel(false);
+    setChannel(channel);
+    clearNotifications();
+  };
+
+  const clearNotifications = () => {
+    let index = currentNotifications.findIndex(
+      (notification) => notification.id === channel.id
+    );
+
+    if (index !== -1) {
+      let updatedNotifications = [...currentNotifications];
+      updatedNotifications[index].total =
+        currentNotifications[index].lastKnownTotal;
+      updatedNotifications[index].count = 0;
+      setNotifications(updatedNotifications);
+    }
   };
 
   useEffect(() => {
@@ -109,16 +155,61 @@ const Channels = (props) => {
       channelsRef.on("child_added", (snap) => {
         loadedChannels.push(snap.val());
         setChannels(loadedChannels);
+        addNotificationListener(snap.key);
+      });
+    };
+
+    const addNotificationListener = (channelId) => {
+      messagesRef.child(channelId).on("value", (snap) => {
+        if (channel) {
+          handleNotifications(
+            channelId,
+            channel.id,
+            currentNotifications,
+            snap
+          );
+        }
       });
     };
 
     addListeners();
+  }, [channelsRef, messagesRef, channel, currentNotifications]);
 
-    return () => {
-      console.log("turn off channels ref");
-      channelsRef.off();
-    };
-  }, []);
+  const handleNotifications = (
+    channelId,
+    currentChannelId,
+    notifications,
+    snap
+  ) => {
+    let lastTotal = 0;
+
+    let index = notifications.findIndex(
+      (notification) => notification.id === channelId
+    );
+
+    if (index !== -1) {
+      if (notifications.length > 0) {
+        if (channelId !== currentChannelId) {
+          lastTotal = notifications[index].total;
+
+          if (snap.numChildren() - lastTotal > 0) {
+            notifications[index].count = snap.numChildren() - lastTotal;
+          }
+        }
+
+        notifications[index].lastKnownTotal = snap.numChildren();
+      }
+    } else {
+      notifications.push({
+        id: channelId,
+        total: snap.numChildren(),
+        lastKnownTotal: snap.numChildren(),
+        count: 0,
+      });
+    }
+
+    setNotifications(notifications);
+  };
 
   useEffect(() => {
     if (!_.isEmpty(channels)) {
@@ -126,6 +217,7 @@ const Channels = (props) => {
       if (firstLoad && channels.length > 0) {
         setActiveChannel(firstChannel);
         setCurrentChannel(firstChannel);
+        setChannel(firstChannel);
       }
       setFirstLoad(false);
     }
@@ -133,7 +225,7 @@ const Channels = (props) => {
 
   return (
     <Fragment>
-      <Menu.Menu style={{ paddingBottom: "2em" }}>
+      <Menu.Menu className="menu">
         <Menu.Item>
           <span>
             <Icon name="exchange" /> CHANNELS{" "}
@@ -185,4 +277,7 @@ const mapStateToProps = (state) => ({
   currentUser: state.user.currentUser,
 });
 
-export default connect(mapStateToProps, { setCurrentChannel })(Channels);
+export default connect(mapStateToProps, {
+  setCurrentChannel,
+  setPrivateChannel,
+})(Channels);
