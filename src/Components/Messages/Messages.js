@@ -6,11 +6,11 @@ import firebase from "../../firebase";
 import { connect } from "react-redux";
 import _ from "lodash";
 import Message from "./Message";
+import { setUserPosts } from "../../redux/actions";
 
 const Messages = (props) => {
-  const { currentChannel, currentUser, isPrivateChannel } = props;
+  const { currentChannel, currentUser, isPrivateChannel, setUserPosts } = props;
   const [messagesLoading, setMessagesLoading] = useState(true);
-  const [incomingMessages, setIncomingMessages] = useState([]);
   const [messages, setMessages] = useState();
   const [currentChannelName, setCurrentChannelName] = useState("");
   const [numberOfUniqueUsers, setNumberOfUniqueUsers] = useState(0);
@@ -30,19 +30,18 @@ const Messages = (props) => {
       setCurrentChannelName(
         currentChannel.name.channelName || currentChannel.name
       );
+
       const addListeners = (channelId) => {
-        // addMessageListener(channelId);
+        let loadedMessages = [];
         const ref = getMessagesRef();
 
-        let loadedMessages = [];
         ref.child(channelId).on("child_added", (snap) => {
           if (!_.isEmpty(snap.val())) {
             loadedMessages.push(snap.val());
-            setIncomingMessages(incomingMessages.concat(snap.val()));
           }
+          setMessages(loadedMessages);
         });
 
-        setMessages(loadedMessages);
         setMessagesLoading(false);
       };
 
@@ -96,10 +95,12 @@ const Messages = (props) => {
     };
 
     if (!_.isUndefined(messages) && !_.isEmpty(messages)) {
+      console.log(messages);
       handleSearchMessages();
       countUniqueUsers(messages);
+      countUserPosts(messages);
     }
-  }, [messages, incomingMessages, searchText]);
+  }, [messages, searchText]);
 
   const countUniqueUsers = (messages) => {
     const uniqueUsers = messages.reduce((accumulator, message) => {
@@ -113,6 +114,22 @@ const Messages = (props) => {
     const plural = uniqueUsers.length > 1;
     const numUniqueUsers = `${uniqueUsers.length} user${plural ? "s" : ""}`;
     setNumberOfUniqueUsers(numUniqueUsers);
+  };
+
+  const countUserPosts = (messages) => {
+    let userPosts = messages.reduce((acc, message) => {
+      if (message.user.name in acc) {
+        acc[message.user.name].count += 1;
+      } else {
+        acc[message.user.name] = {
+          avatar: message.user.avatar,
+          count: 1,
+        };
+      }
+      return acc;
+    }, {});
+
+    setUserPosts(userPosts);
   };
 
   const handleSearchChange = (e) => {
@@ -207,4 +224,4 @@ const mapStateToProps = (state) => ({
   isPrivateChannel: state.channel.isPrivateChannel,
 });
 
-export default connect(mapStateToProps)(Messages);
+export default connect(mapStateToProps, { setUserPosts })(Messages);

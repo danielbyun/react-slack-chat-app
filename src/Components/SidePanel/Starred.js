@@ -4,6 +4,7 @@ import { connect } from "react-redux";
 import { setCurrentChannel, setPrivateChannel } from "../../redux/actions";
 import _ from "lodash";
 import firebase from "../../firebase";
+import useDeepCompareEffect from "use-deep-compare-effect";
 
 const Starred = ({ currentUser }) => {
   const [starredChannels, setStarredChannels] = useState([]);
@@ -11,15 +12,17 @@ const Starred = ({ currentUser }) => {
   const [activeUser, setActiveUser] = useState();
   const [usersRef] = useState(firebase.database().ref("users"));
 
-  useEffect(() => {
+  useDeepCompareEffect(() => {
     const updateChannels = (userId) => {
+      const channels = [];
+      let tempChannel;
       usersRef
         .child(userId)
         .child("starred")
         .on("child_added", (snap) => {
-          const starredChannel = { id: snap.key, ...snap.val() };
-          console.log(starredChannel);
-          setStarredChannels([...starredChannels, starredChannel]);
+          tempChannel = { id: snap.key, ...snap.val() };
+          channels.push(tempChannel);
+          setStarredChannels(channels);
         });
 
       usersRef
@@ -38,11 +41,7 @@ const Starred = ({ currentUser }) => {
       setActiveUser(currentUser);
       updateChannels(currentUser.uid);
     }
-  }, [currentUser]);
-
-  useEffect(() => {
-    console.log(starredChannels);
-  }, [starredChannels]);
+  }, [currentUser, starredChannels]);
 
   const changeChannel = (channel) => {
     setActiveChannel(channel);
