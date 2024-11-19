@@ -8,7 +8,7 @@
     "@testing-library/user-event": "^7.2.1",
     "dotenv": "^8.2.0",
     "emoji-mart": "^3.0.0",
-    "firebase": "^7.14.1",
+    "firebase": "^10.9.0",
     "lodash": "^4.17.15",
     "md5": "^2.2.1",
     "mime-types": "^2.1.26",
